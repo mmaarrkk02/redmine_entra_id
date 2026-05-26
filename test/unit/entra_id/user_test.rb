@@ -194,13 +194,52 @@ class EntraId::UserTest < ActiveSupport::TestCase
     assert_equal "NewLast", existing_user.lastname
     assert_equal "12345678-1234-1234-1234-123456789012", existing_user.oid
 
-    # Status should be set to active when syncing with EntraID
-    assert_equal User::STATUS_ACTIVE, existing_user.status
+    # Locked users must remain locked after sync
+    assert_equal User::STATUS_LOCKED, existing_user.status
 
     # Other Redmine-specific attributes should be preserved
     assert_equal true, existing_user.admin
     assert_in_delta expected_created_on, existing_user.created_on, 1.second
     assert_in_delta expected_last_login_on, existing_user.last_login_on, 1.second
+  end
+
+  test "locks new discomap users during replication" do
+    entra_user = EntraId::User.new({
+      id: "22345678-1234-1234-1234-123456789012",
+      userPrincipalName: "finnbjornsdottir@discomap.eea.europa.eu",
+      mail: "finnbjornsdottir@discomap.eea.europa.eu",
+      givenName: "Finn",
+      surname: "Bjornsdottir"
+    }.with_indifferent_access)
+
+    entra_user.replicate_locally!
+
+    user = User.find_by!(login: "finnbjornsdottir@discomap.eea.europa.eu")
+    assert_equal User::STATUS_LOCKED, user.status
+  end
+
+  test "locks existing discomap users during replication" do
+    existing_user = User.create!(
+      login: "finnbjornsdottir@discomap.eea.europa.eu",
+      firstname: "OldFirst",
+      lastname: "OldLast",
+      mail: "finnbjornsdottir@discomap.eea.europa.eu",
+      status: User::STATUS_ACTIVE,
+      oid: "old-oid-12345"
+    )
+
+    entra_user = EntraId::User.new({
+      id: "old-oid-12345",
+      userPrincipalName: "finnbjornsdottir@discomap.eea.europa.eu",
+      mail: "finnbjornsdottir@discomap.eea.europa.eu",
+      givenName: "Finn",
+      surname: "Bjornsdottir"
+    }.with_indifferent_access)
+
+    entra_user.replicate_locally!
+    existing_user.reload
+
+    assert_equal User::STATUS_LOCKED, existing_user.status
   end
 
   test "falls back to displayName when givenName and surname are missing" do

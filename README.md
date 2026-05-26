@@ -21,7 +21,7 @@ Microsoft EntraID is Microsoft's cloud-based identity and access management serv
 
 ## Requirements
 
-- Redmine 5.x and 6.0
+- Redmine 5.x, 6.0, and 6.1
 - Ruby 3.1 or newer
 - Microsoft EntraID tenant with application registration
 
@@ -141,13 +141,85 @@ bundle exec rake entra_id:sync:groups RAILS_ENV=production
   - `surname` → lastname
   - `id` (OID) → stored for future synchronization
 - Updates `synced_at` timestamp
+- Keeps already `locked` Redmine users locked during sync
+- Locks users whose Entra email is under `@discomap.eea.europa.eu`, both on create and update
 
 **Group Synchronization**:
 
 - Fetches groups from Microsoft Graph API
 - Creates/updates Redmine groups based on EntraID groups
 - Syncs group memberships automatically
-- Removes Redmine groups that no longer exist in EntraID
+
+### EEA Entra ID Sync Policy
+
+This section documents the synchronization policy currently implemented by the plugin.
+
+`entra_id:sync` runs, in order:
+
+1. user synchronization
+2. group synchronization
+
+**Current user sync policy**:
+
+1. Reads users from the Microsoft Graph `users` endpoint
+2. For each Entra ID user, looks for a local Redmine user by `oid`, email, then login
+3. If the user exists in Redmine, updates `firstname`, `lastname`, `mail`, `oid`, `status`, and `synced_at`
+4. If the user does not exist in Redmine, creates it
+
+**User attributes synchronized**:
+
+- `id` -> `oid`
+- `mail` or `userPrincipalName` -> `mail`
+- `mail` or `userPrincipalName` -> `login` on create only
+- `givenName` / `surname` / `displayName` -> `firstname`, `lastname`
+- synchronization time -> `synced_at`
+
+**User status policy**:
+
+- existing users that are already `locked` in Redmine remain `locked`
+- users with email addresses under `@discomap.eea.europa.eu` are always set to `locked`
+- all other synchronized users are set to `active`
+
+**What user sync explicitly does**:
+
+- updates existing users returned by Entra ID
+- creates new users returned by Entra ID
+- updates `synced_at` on every successful synchronization
+- does not update `login` for existing users
+
+**What user sync does not do**:
+
+- if a user has been deleted from Entra ID, no action is taken on the Redmine user
+- if a user no longer appears in the sync result, the user is not deleted from Redmine
+- if a user no longer appears in the sync result, the user is not locked in Redmine
+- if a user is disabled in Entra ID, the current plugin does not detect this and does not lock the user in Redmine
+- there is no reconciliation for users previously synchronized but now absent from Entra ID
+- there is no delta sync for users
+
+**Current group sync policy**:
+
+1. Reads groups from the Microsoft Graph `groups` endpoint
+2. For each group, reads members from `transitiveMembers`
+3. Creates or updates the corresponding Redmine group
+4. Reconciles Redmine group membership against the membership returned by Entra ID
+
+**What group sync explicitly does**:
+
+- creates new groups in Redmine
+- updates existing groups by `oid`
+- updates the Redmine group name from Entra ID
+- adds users that already exist in Redmine and have a matching `oid`
+- removes users that are in the Redmine group but no longer appear in the Entra ID group membership
+- removes users without an `oid` from synchronized groups
+
+**What group sync does not do**:
+
+- if a group has been deleted from Entra ID, no action is taken on the Redmine group
+- groups missing from Entra ID are not deleted from Redmine
+- groups missing from Entra ID are not archived and are not marked in any way
+- group sync does not create missing users; it only adds users that already exist locally and are identified by `oid`
+- group sync does not lock or delete users
+- there is no delta sync for groups
 
 ### Exclusive Mode
 

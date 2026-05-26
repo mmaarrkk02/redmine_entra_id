@@ -1,4 +1,6 @@
 class EntraId::User
+  DISCOMAP_LOCKED_DOMAIN = "@discomap.eea.europa.eu".freeze
+
   class << self
     def find_by(**kwargs)
       filter = kwargs.map { |k, v| "#{k} eq '#{v}'" }.join(" and ")
@@ -80,10 +82,11 @@ class EntraId::User
 
   def replicate_locally!
     local_user = ::User.find_by_identity(self)
+    attributes = user_attributes(local_user: local_user)
 
     if local_user
       # Do not update the login for existing users
-      attributes = user_attributes.except(:login)
+      attributes = attributes.except(:login)
       # Avoid generating security notifications if the email address in Redmine
       # is Foo.Bar@baz.com while in Entra is foo.bar@baz.com.
       attributes[:mail] = local_user.mail if local_user.mail.casecmp?(email)
@@ -106,15 +109,26 @@ class EntraId::User
       )
     end
 
-    def user_attributes
+    def user_attributes(local_user: nil)
       {
         login: email,
         firstname: given_name,
         lastname: surname,
         mail: email,
         oid: oid,
-        status: User::STATUS_ACTIVE,
+        status: desired_status(local_user),
         synced_at: Time.current
       }
+    end
+
+    def desired_status(local_user)
+      return User::STATUS_LOCKED if lock_required_by_email?
+      return local_user.status if local_user&.locked?
+
+      User::STATUS_ACTIVE
+    end
+
+    def lock_required_by_email?
+      email.to_s.downcase.end_with?(DISCOMAP_LOCKED_DOMAIN)
     end
 end
