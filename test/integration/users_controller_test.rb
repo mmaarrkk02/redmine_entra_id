@@ -26,6 +26,15 @@ class UsersControllerTest < Redmine::IntegrationTest
     end
   end
 
+  test "should display entra oid for entra authenticated users in edit form" do
+    get edit_user_path(@entra_user)
+    assert_response :success
+
+    assert_select "fieldset", text: /Information/i do
+      assert_select "p", text: /#{Regexp.escape(I18n.t(:field_entra_id_oid))}.*#{Regexp.escape(@entra_user.oid)}/
+    end
+  end
+
   test "should not display last sync time for non-entra users in edit form" do
     get edit_user_path(@normal_user)
     assert_response :success
@@ -33,6 +42,7 @@ class UsersControllerTest < Redmine::IntegrationTest
     # Should not display sync time for non-entra users
     assert_select "fieldset", text: /Information/i do
       assert_select "p", text: /#{Regexp.escape(I18n.t(:label_last_entra_id_sync))}/, count: 0
+      assert_select "p", text: /#{Regexp.escape(I18n.t(:field_entra_id_oid))}/, count: 0
     end
   end
 end

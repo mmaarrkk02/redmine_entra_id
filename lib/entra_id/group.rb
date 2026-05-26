@@ -71,6 +71,7 @@ class EntraId::Group
     def create_or_update_associated_group
       @group = ::Group.find_or_initialize_by(oid: @oid)
       @group.lastname = name
+      @group.synced_at = Time.current
       @group.save!
     end
 

@@ -1,0 +1,29 @@
+<p>
+  <%= f.text_field :name, required: true, size: 60, disabled: !@group.safe_attribute?("name") %>
+</p>
+
+<% if @group.oid.present? %>
+  <p>
+    <label><%= l(:field_entra_id_oid) %></label>
+    <%= @group.oid %>
+  </p>
+<% end %>
+
+<% if @group.synced_at.present? %>
+  <p>
+    <label><%= l(:label_last_entra_id_sync) %></label>
+    <%= format_time(@group.synced_at) %>
+  </p>
+<% end %>
+
+<% unless @group.builtin? %>
+  <p>
+    <%= f.check_box :twofa_required, disabled: !Setting.twofa_optional? %>
+
+    <% if Setting.twofa_required? %>
+      <em class="info"><%= l("twofa_text_group_required") %></em>
+    <% elsif !Setting.twofa_optional? %>
+      <em class="info"><%= l("twofa_text_group_disabled") %></em>
+    <% end %>
+  </p>
+<% end %>

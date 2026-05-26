@@ -5,6 +5,8 @@
 - Redmine 6.1 compliance
 - `sync:users` no longer reactivates users already `locked` in Redmine
 - `sync:users` locks users with `@discomap.eea.europa.eu` email addresses on create and update
+- show Entra ID OID on user edit and group edit pages
+- show `EEA Entra ID synced at` on group edit pages
 - tests updated for the new user sync status policy
 - EEA Entra ID sync policy integrated into `README.md`
 
