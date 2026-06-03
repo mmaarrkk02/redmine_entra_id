@@ -19,8 +19,12 @@ class GroupsControllerTest < Redmine::IntegrationTest
     assert_response :success
 
     expected_time = ApplicationController.helpers.format_time(@entra_group.synced_at)
-    assert_select "p", text: /#{Regexp.escape(I18n.t(:field_entra_id_oid))}.*#{Regexp.escape(@entra_group.oid)}/
-    assert_select "p", text: /#{Regexp.escape(I18n.t(:label_last_entra_id_sync))}.*#{Regexp.escape(expected_time)}/
+    assert_select "fieldset.box.tabular legend", text: I18n.t(:label_information_plural)
+    assert_select "fieldset.box.tabular legend", text: I18n.t(:label_authentication)
+    assert_select "fieldset.box.tabular", text: /#{Regexp.escape(I18n.t(:label_information_plural))}/ do
+      assert_select "p", text: /#{Regexp.escape(I18n.t(:field_entra_id_oid))}.*#{Regexp.escape(@entra_group.oid)}/
+      assert_select "p", text: /#{Regexp.escape(I18n.t(:label_last_entra_id_sync))}.*#{Regexp.escape(expected_time)}/
+    end
   end
 
   test "should not display entra sync info for groups without entra data" do

@@ -150,6 +150,14 @@ bundle exec rake entra_id:sync:groups RAILS_ENV=production
 - Creates/updates Redmine groups based on EntraID groups
 - Syncs group memberships automatically
 
+### Admin edit forms
+
+The plugin also exposes Entra ID metadata directly in the Redmine edit forms:
+
+- **User edit**: displays the Entra ID OID and the `EEA Entra ID synced at` timestamp in the `Information` fieldset
+- **Group edit**: displays the Entra ID OID and the `EEA Entra ID synced at` timestamp in the `Information` fieldset
+- **Group edit layout**: uses separate `Information` and `Authentication` fieldsets, matching the structure of the user edit form
+
 ### EEA Entra ID Sync Policy
 
 This section documents the synchronization policy currently implemented by the plugin.

@@ -1,29 +1,37 @@
-<p>
-  <%= f.text_field :name, required: true, size: 60, disabled: !@group.safe_attribute?("name") %>
-</p>
+<fieldset class="box tabular">
+  <legend><%= l(:label_information_plural) %></legend>
 
-<% if @group.oid.present? %>
   <p>
-    <label><%= l(:field_entra_id_oid) %></label>
-    <%= @group.oid %>
+    <%= f.text_field :name, required: true, size: 60, disabled: !@group.safe_attribute?("name") %>
   </p>
-<% end %>
 
-<% if @group.synced_at.present? %>
-  <p>
-    <label><%= l(:label_last_entra_id_sync) %></label>
-    <%= format_time(@group.synced_at) %>
-  </p>
-<% end %>
+  <% if @group.oid.present? %>
+    <p>
+      <label><%= l(:field_entra_id_oid) %></label>
+      <%= @group.oid %>
+    </p>
+  <% end %>
 
-<% unless @group.builtin? %>
-  <p>
-    <%= f.check_box :twofa_required, disabled: !Setting.twofa_optional? %>
+  <% if @group.synced_at.present? %>
+    <p>
+      <label><%= l(:label_last_entra_id_sync) %></label>
+      <%= format_time(@group.synced_at) %>
+    </p>
+  <% end %>
+</fieldset>
 
-    <% if Setting.twofa_required? %>
-      <em class="info"><%= l("twofa_text_group_required") %></em>
-    <% elsif !Setting.twofa_optional? %>
-      <em class="info"><%= l("twofa_text_group_disabled") %></em>
-    <% end %>
-  </p>
-<% end %>
+<fieldset class="box tabular">
+  <legend><%= l(:label_authentication) %></legend>
+
+  <% unless @group.builtin? %>
+    <p>
+      <%= f.check_box :twofa_required, disabled: !Setting.twofa_optional? %>
+
+      <% if Setting.twofa_required? %>
+        <em class="info"><%= l("twofa_text_group_required") %></em>
+      <% elsif !Setting.twofa_optional? %>
+        <em class="info"><%= l("twofa_text_group_disabled") %></em>
+      <% end %>
+    </p>
+  <% end %>
+</fieldset>
