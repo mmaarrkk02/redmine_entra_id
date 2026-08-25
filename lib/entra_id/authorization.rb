@@ -1,3 +1,5 @@
+require_relative 'graph/jwt_builder'
+
 class EntraId::Authorization
   attr_reader :code_verifier, :state, :nonce, :redirect_uri
 
@@ -48,7 +50,7 @@ class EntraId::Authorization
     def client
       @client ||= OAuth2::Client.new(
         EntraId.client_id,
-        EntraId.client_secret,
+        EntraId.client_secret || 'placeholder',
         site: EntraId.oauth_base_url,
         authorize_url: EntraId.authorize_path,
         token_url: EntraId.token_endpoint_path,
@@ -57,10 +59,24 @@ class EntraId::Authorization
     end
 
     def exchange_code_for_access_token(code)
-      client.auth_code.get_token(
-        code,
-        { redirect_uri: redirect_uri, code_verifier: code_verifier }
-      )
+      token_params = {
+        redirect_uri: redirect_uri,
+        code_verifier: code_verifier
+      }
+
+      # Add client authentication based on auth method
+      if EntraId::Graph::AccessToken.using_certificate?
+        jwt = EntraId::Graph::JwtBuilder.generate(
+          EntraId.certificate_path,
+          EntraId.client_id,
+          EntraId.tenant_id,
+          EntraId.certificate_password
+        )
+        token_params[:client_assertion_type] = 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
+        token_params[:client_assertion] = jwt
+      end
+
+      client.auth_code.get_token(code, token_params)
     end
 
     def decode_id_token(id_token)
