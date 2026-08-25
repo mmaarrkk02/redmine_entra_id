@@ -52,9 +52,17 @@ class EntraId::Graph::JwtBuilder
     end
 
     def load_pfx_key(cert_data)
-      pkcs12 = OpenSSL::PKCS12.new(cert_data, @certificate_password)
+      password = @certificate_password.to_s
+      if password.empty?
+        Rails.logger.warn "WARNING: Loading PFX without password. If PFX is password-protected, authentication will fail."
+      end
+
+      pkcs12 = OpenSSL::PKCS12.new(cert_data, password.empty? ? nil : password)
       pkcs12.key
     rescue StandardError => e
+      if e.message.include?("mac verify failure")
+        raise EntraId::NetworkError, "Failed to load PFX certificate: Password incorrect or PFX corrupted. Verify ENTRA_ID_CERTIFICATE_PASSWORD environment variable is set correctly. Error: #{e.message}"
+      end
       raise EntraId::NetworkError, "Failed to load PFX certificate: #{e.message}"
     end
 
@@ -63,7 +71,8 @@ class EntraId::Graph::JwtBuilder
         cert_data = File.read(@certificate_path)
 
         if @certificate_path.end_with?('.pfx', '.p12')
-          pkcs12 = OpenSSL::PKCS12.new(cert_data, @certificate_password)
+          password = @certificate_password.to_s
+          pkcs12 = OpenSSL::PKCS12.new(cert_data, password.empty? ? nil : password)
           cert = pkcs12.certificate
         else
           cert = OpenSSL::X509::Certificate.new(cert_data)
@@ -72,6 +81,9 @@ class EntraId::Graph::JwtBuilder
         Digest::SHA1.hexdigest(cert.to_der).upcase
       end
     rescue StandardError => e
+      if e.message.include?("mac verify failure")
+        raise EntraId::NetworkError, "Failed to load certificate thumbprint: Password incorrect or PFX corrupted. Verify ENTRA_ID_CERTIFICATE_PASSWORD is set correctly."
+      end
       raise EntraId::NetworkError, "Failed to load certificate: #{e.message}"
     end
 
