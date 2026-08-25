@@ -97,7 +97,7 @@ class EntraId::Graph::JwtBuilder
           cert = OpenSSL::X509::Certificate.new(cert_data)
         end
 
-        Digest::SHA1.hexdigest(cert.to_der).upcase
+        Digest::SHA256.hexdigest(cert.to_der).upcase
       end
     rescue StandardError => e
       if e.message.include?("mac verify failure")
