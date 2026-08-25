@@ -54,14 +54,16 @@ class EntraId::Authorization
         site: EntraId.oauth_base_url,
         authorize_url: EntraId.authorize_path,
         token_url: EntraId.token_endpoint_path,
-        auth_scheme: :request_body
+        auth_scheme: EntraId::Graph::AccessToken.using_certificate? ? :not_applicable : :request_body
       )
     end
 
     def exchange_code_for_access_token(code)
       token_params = {
         redirect_uri: redirect_uri,
-        code_verifier: code_verifier
+        code_verifier: code_verifier,
+        grant_type: 'authorization_code',
+        code: code
       }
 
       # Add client authentication based on auth method
@@ -74,9 +76,11 @@ class EntraId::Authorization
         )
         token_params[:client_assertion_type] = 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
         token_params[:client_assertion] = jwt
+        token_params[:client_id] = EntraId.client_id
       end
 
-      client.auth_code.get_token(code, token_params)
+      response = client.request(:post, client.token_endpoint, body: token_params, authenticated: false)
+      OAuth2::AccessToken.from_hash(client, response.parsed)
     end
 
     def decode_id_token(id_token)
