@@ -19,6 +19,17 @@ class EntraId::Graph::JwtBuilder
   end
 
   def build
+    Rails.logger.info "=== JWT Generation Start ==="
+    Rails.logger.info "Certificate Path: #{@certificate_path}"
+    Rails.logger.info "Certificate Exists: #{File.exist?(@certificate_path.to_s)}"
+    Rails.logger.info "Certificate Size: #{File.size(@certificate_path.to_s) if File.exist?(@certificate_path.to_s)} bytes"
+    Rails.logger.info "Client ID: #{@client_id}"
+    Rails.logger.info "Tenant ID: #{@tenant_id}"
+    Rails.logger.info "Certificate Password Length: #{@certificate_password.to_s.length}"
+
+    thumb = certificate_thumb
+    Rails.logger.info "Certificate Thumbprint: #{thumb}"
+
     payload = {
       aud: token_url,
       exp: (Time.current + EXPIRES_IN).to_i,
@@ -28,8 +39,16 @@ class EntraId::Graph::JwtBuilder
       jti: SecureRandom.uuid
     }
 
-    JWT.encode(payload, private_key, ALGORITHM, {kid: certificate_thumb})
+    Rails.logger.info "JWT Payload: #{payload.inspect}"
+    jwt = JWT.encode(payload, private_key, ALGORITHM, {kid: thumb})
+    Rails.logger.info "JWT Generated Successfully"
+    Rails.logger.info "=== JWT Generation End ==="
+
+    jwt
   rescue StandardError => e
+    Rails.logger.error "=== JWT Generation Error ==="
+    Rails.logger.error "Error: #{e.message}"
+    Rails.logger.error "Backtrace: #{e.backtrace.first(5).join("\n")}"
     raise EntraId::NetworkError, "Failed to generate JWT: #{e.message}"
   end
 

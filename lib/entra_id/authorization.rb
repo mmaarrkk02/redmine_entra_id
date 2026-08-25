@@ -59,6 +59,10 @@ class EntraId::Authorization
     end
 
     def exchange_code_for_access_token(code)
+      Rails.logger.info "=== Token Exchange Start ==="
+      Rails.logger.info "Auth Method: #{EntraId.auth_method}"
+      Rails.logger.info "Using Certificate: #{EntraId::Graph::AccessToken.using_certificate?}"
+
       token_params = {
         redirect_uri: redirect_uri,
         code_verifier: code_verifier,
@@ -68,19 +72,32 @@ class EntraId::Authorization
 
       # Add client authentication based on auth method
       if EntraId::Graph::AccessToken.using_certificate?
+        Rails.logger.info "Generating JWT for certificate auth..."
         jwt = EntraId::Graph::JwtBuilder.generate(
           EntraId.certificate_path,
           EntraId.client_id,
           EntraId.tenant_id,
           EntraId.certificate_password
         )
+        Rails.logger.info "JWT Length: #{jwt.length}"
+        Rails.logger.info "JWT Kid (Thumbprint): #{JWT.decode(jwt, nil, false)[1]['kid']}" rescue nil
+
         token_params[:client_assertion_type] = 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
         token_params[:client_assertion] = jwt
         token_params[:client_id] = EntraId.client_id
+        Rails.logger.info "Token Params: grant_type=#{token_params[:grant_type]}, client_assertion_type=#{token_params[:client_assertion_type]}, client_id=#{token_params[:client_id]}"
+      else
+        Rails.logger.info "Using client secret auth"
       end
 
+      Rails.logger.info "Sending token request to: #{EntraId.token_endpoint_path}"
       response = client.request(:post, EntraId.token_endpoint_path, body: token_params, authenticated: false)
+      Rails.logger.info "=== Token Exchange Success ==="
       OAuth2::AccessToken.from_hash(client, response.parsed)
+    rescue StandardError => e
+      Rails.logger.error "=== Token Exchange Error ==="
+      Rails.logger.error "Error: #{e.message}"
+      raise
     end
 
     def decode_id_token(id_token)
