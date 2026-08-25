@@ -79,7 +79,7 @@ class EntraId::Authorization
         token_params[:client_id] = EntraId.client_id
       end
 
-      response = client.request(:post, client.token_endpoint, body: token_params, authenticated: false)
+      response = client.request(:post, EntraId.token_endpoint_path, body: token_params, authenticated: false)
       OAuth2::AccessToken.from_hash(client, response.parsed)
     end
 
