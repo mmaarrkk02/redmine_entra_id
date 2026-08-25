@@ -3,7 +3,7 @@ require_relative 'jwt_builder'
 class EntraId::Graph::AccessToken
   HOST = "login.microsoftonline.com"
   GRANT_TYPE = "client_credentials"
-  GRANT_TYPE_JWT = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+  CLIENT_ASSERTION_TYPE = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
   SCOPE = "https://graph.microsoft.com/.default"
 
   EXPIRATION_BUFFER = 30.seconds
@@ -48,10 +48,13 @@ class EntraId::Graph::AccessToken
         EntraId.certificate_password
       )
 
+      # Client credentials with a certificate: the JWT goes in `client_assertion`,
+      # the grant type stays `client_credentials`.
       URI.encode_www_form({
-        "grant_type" => GRANT_TYPE_JWT,
+        "grant_type" => GRANT_TYPE,
         "client_id" => EntraId.client_id,
-        "assertion" => jwt,
+        "client_assertion_type" => CLIENT_ASSERTION_TYPE,
+        "client_assertion" => jwt,
         "scope" => SCOPE
       })
     end

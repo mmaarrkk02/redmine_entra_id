@@ -83,8 +83,7 @@ class EntraId::Authorization
         payload, header = JWT.decode(jwt, nil, false)
         Rails.logger.info "JWT Header: #{header.inspect}"
         Rails.logger.info "JWT Payload: #{payload.inspect}"
-        Rails.logger.info "JWT Full Token: #{jwt[0..100]}...#{jwt[-50..-1]}"
-        Rails.logger.info "JWT Kid (Thumbprint): #{header['kid']}" rescue nil
+        Rails.logger.info "JWT x5t (Thumbprint): #{header['x5t']}" rescue nil
 
         token_params[:client_assertion_type] = 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
         token_params[:client_assertion] = jwt

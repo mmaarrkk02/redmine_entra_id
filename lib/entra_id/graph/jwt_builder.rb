@@ -27,8 +27,8 @@ class EntraId::Graph::JwtBuilder
     Rails.logger.info "Tenant ID: #{@tenant_id}"
     Rails.logger.info "Certificate Password Length: #{@certificate_password.to_s.length}"
 
-    thumb = certificate_thumb
-    Rails.logger.info "Certificate Thumbprint: #{thumb}"
+    Rails.logger.info "Certificate Thumbprint (SHA-1 hex): #{certificate_thumb_hex}"
+    Rails.logger.info "Certificate x5t (base64url): #{certificate_x5t}"
 
     payload = {
       aud: token_url,
@@ -40,7 +40,9 @@ class EntraId::Graph::JwtBuilder
     }
 
     Rails.logger.info "JWT Payload: #{payload.inspect}"
-    jwt = JWT.encode(payload, private_key, ALGORITHM, {kid: thumb})
+    # Entra ID identifies the signing certificate by `x5t`: the base64url-encoded
+    # raw SHA-1 digest of the certificate DER. A hex thumbprint is never matched.
+    jwt = JWT.encode(payload, private_key, ALGORITHM, {typ: 'JWT', x5t: certificate_x5t})
     Rails.logger.info "JWT Generated Successfully"
     Rails.logger.info "=== JWT Generation End ==="
 
@@ -59,7 +61,7 @@ class EntraId::Graph::JwtBuilder
     end
 
     def load_private_key
-      cert_data = File.read(@certificate_path)
+      cert_data = File.binread(@certificate_path)
 
       if @certificate_path.end_with?('.pfx', '.p12')
         load_pfx_key(cert_data)
@@ -85,19 +87,29 @@ class EntraId::Graph::JwtBuilder
       raise EntraId::NetworkError, "Failed to load PFX certificate: #{e.message}"
     end
 
-    def certificate_thumb
-      @certificate_thumb ||= begin
-        cert_data = File.read(@certificate_path)
+    def certificate_x5t
+      @certificate_x5t ||= Base64.urlsafe_encode64(certificate_sha1, padding: false)
+    end
+
+    def certificate_thumb_hex
+      @certificate_thumb_hex ||= certificate_sha1.unpack1('H*').upcase
+    end
+
+    def certificate_sha1
+      @certificate_sha1 ||= OpenSSL::Digest::SHA1.digest(certificate.to_der)
+    end
+
+    def certificate
+      @certificate ||= begin
+        cert_data = File.binread(@certificate_path)
 
         if @certificate_path.end_with?('.pfx', '.p12')
           password = @certificate_password.to_s
           pkcs12 = OpenSSL::PKCS12.new(cert_data, password.empty? ? nil : password)
-          cert = pkcs12.certificate
+          pkcs12.certificate
         else
-          cert = OpenSSL::X509::Certificate.new(cert_data)
+          OpenSSL::X509::Certificate.new(cert_data)
         end
-
-        Digest::SHA1.hexdigest(cert.to_der).upcase
       end
     rescue StandardError => e
       if e.message.include?("mac verify failure")
