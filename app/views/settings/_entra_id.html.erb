@@ -14,12 +14,64 @@
     <em class="info"><%= l(:entra_id_client_id_info) %></em>
 </p>
 <p>
-    <label><%= l(:entra_id_client_secret) %></label>
-    <strong><code><%= EntraId.masked_client_secret.presence || l(:entra_id_not_set) %></code></strong>
-    <em class="info"><%= l(:entra_id_client_secret_info) %></em>
-</p>
-<p>
     <label><%= l(:entra_id_tenant_id) %></label>
     <strong><code><%= EntraId.tenant_id || l(:entra_id_not_set) %></code></strong>
     <em class="info"><%= l(:entra_id_tenant_id_info) %></em>
 </p>
+
+<fieldset class="box">
+  <legend><%= l(:entra_id_authentication_method) %></legend>
+
+  <p>
+    <%= label_tag "settings[auth_method]", l(:entra_id_auth_method) %>
+    <%= select_tag 'settings[auth_method]',
+        options_for_select([
+          [l(:entra_id_auth_method_secret), 'secret'],
+          [l(:entra_id_auth_method_certificate), 'certificate']
+        ], EntraId.auth_method),
+        { id: 'auth_method_select' } %>
+    <em class="info"><%= l(:entra_id_auth_method_info) %></em>
+  </p>
+
+  <div id="secret_auth_fields">
+    <p>
+      <label><%= l(:entra_id_client_secret) %></label>
+      <strong><code><%= EntraId.masked_client_secret.presence || l(:entra_id_not_set) %></code></strong>
+      <em class="info"><%= l(:entra_id_client_secret_info) %></em>
+    </p>
+  </div>
+
+  <div id="certificate_auth_fields" style="display:none;">
+    <p>
+      <label><%= l(:entra_id_certificate_path) %></label>
+      <strong><code><%= EntraId.certificate_path || l(:entra_id_not_set) %></code></strong>
+      <em class="info"><%= l(:entra_id_certificate_path_info) %></em>
+    </p>
+    <p>
+      <label><%= l(:entra_id_certificate_password) %></label>
+      <%= password_field_tag 'settings[certificate_password]', '', { size: 40, placeholder: l(:entra_id_certificate_password_placeholder) } %>
+      <em class="info"><%= l(:entra_id_certificate_password_info) %></em>
+    </p>
+  </div>
+</fieldset>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const authMethodSelect = document.getElementById('auth_method_select');
+  const secretFields = document.getElementById('secret_auth_fields');
+  const certFields = document.getElementById('certificate_auth_fields');
+
+  function updateFields() {
+    if (authMethodSelect.value === 'certificate') {
+      secretFields.style.display = 'none';
+      certFields.style.display = 'block';
+    } else {
+      secretFields.style.display = 'block';
+      certFields.style.display = 'none';
+    }
+  }
+
+  authMethodSelect.addEventListener('change', updateFields);
+  updateFields();
+});
+</script>

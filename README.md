@@ -65,16 +65,31 @@ These steps need to be completed in the EntraID admin console.
    - **User.Read.All** (Application) - for user synchronization
    - **Group.Read.All** (Application) - for group synchronization
 7. Click **Grant admin consent** to apply the permissions
+
+### Authentication Method Setup
+
+Choose one of the following authentication methods:
+
+#### Option 1: Client Secret (Legacy)
+
 8. Go to **Certificates & secrets**
 9. Click **New client secret**
 10. Add a description and set expiration
 11. **Copy the secret value** (you won't be able to see it again)
 
+#### Option 2: Certificate (Recommended)
+
+8. Go to **Certificates & secrets** → **Certificates**
+9. Click **Upload certificate**
+10. Upload your certificate file (.pem or .pfx)
+11. Note: Ensure the certificate's public key is uploaded to Entra ID
+
 From your app registration overview page, copy:
 
 - **Application (client) ID**
 - **Directory (tenant) ID**
-- **Client secret** (from previous step)
+- **Client secret** (if using client secret method)
+- **Certificate path** (if using certificate method)
 
 ## Plugin Configuration
 
@@ -85,21 +100,41 @@ From your app registration overview page, copy:
 
 2. **Configure the plugin:**
 
-   The plugin uses environment variables for the Entra credentials:
+   The plugin uses environment variables for the Entra credentials.
+
+   ### Using Client Secret (Legacy Method)
 
    ```bash
-   # Set the following environment variables
    export ENTRA_ID_CLIENT_ID="12345678-1234-1234-1234-123456789012"
    export ENTRA_ID_CLIENT_SECRET="your-client-secret-here"
    export ENTRA_ID_TENANT_ID="87654321-4321-4321-4321-210987654321"
+   export ENTRA_ID_AUTH_METHOD="secret"
    ```
+
+   ### Using Certificate (Recommended Method)
+
+   ```bash
+   export ENTRA_ID_CLIENT_ID="12345678-1234-1234-1234-123456789012"
+   export ENTRA_ID_TENANT_ID="87654321-4321-4321-4321-210987654321"
+   export ENTRA_ID_AUTH_METHOD="certificate"
+   export ENTRA_ID_CERTIFICATE_PATH="/path/to/certificate.pem"
+   # Optional: if certificate is password-protected
+   export ENTRA_ID_CERTIFICATE_PASSWORD="your-certificate-password"
+   ```
+
+   **Certificate Format Support:**
+   - `.pem` files (with or without password)
+   - `.pfx` / `.p12` files (with password)
 
    **Plugin Settings** (via Administration > Plugins > Configure):
 
-   | Setting       | Description                          | Default |
-   | ------------- | ------------------------------------ | ------- |
-   | **Enabled**   | Enable/disable the plugin            | `false` |
-   | **Exclusive** | Disable local Redmine authentication | `false` |
+   | Setting              | Description                          | Default    |
+   | -------------------- | ------------------------------------ | ---------- |
+   | **Enabled**          | Enable/disable the plugin            | `false`    |
+   | **Exclusive**        | Disable local Redmine authentication | `false`    |
+   | **Authentication Method** | Choose between secret or certificate | `secret`  |
+   | **Certificate Path** | Path to certificate file (cert method only) | (empty) |
+   | **Certificate Password** | Password for encrypted certificates (cert method only) | (empty) |
 
 3. **Save the configuration**
 
@@ -250,6 +285,56 @@ The plugin adds the following fields to the `users` table:
 - `bin/rails entra_id:reset_logins`
 - `bin/rails entra_id:reset_auth_sources`
 
+## Certificate Management (for Certificate Authentication)
+
+### Generating a Self-Signed Certificate
+
+If you need to generate a certificate for testing or development:
+
+```bash
+# Generate a private key
+openssl genrsa -out private.key 2048
+
+# Generate a self-signed certificate valid for 365 days
+openssl req -new -x509 -key private.key -out certificate.pem -days 365
+
+# Combine into a single PEM file (if needed)
+cat private.key certificate.pem > combined.pem
+```
+
+### Converting Between Formats
+
+```bash
+# PEM to PFX (PKCS#12)
+openssl pkcs12 -export -in certificate.pem -inkey private.key -out certificate.pfx
+
+# PFX to PEM
+openssl pkcs12 -in certificate.pfx -out certificate.pem -nodes
+```
+
+### Uploading Certificate to Entra ID
+
+1. In the Microsoft Entra admin center, go to **App registrations** → your app
+2. Navigate to **Certificates & secrets** → **Certificates**
+3. Click **Upload certificate**
+4. Select your certificate file (.pem, .cer, or .pfx)
+5. Click **Add**
+
+### Certificate Expiration Management
+
+Certificates have expiration dates. Monitor your certificate expiration:
+
+```bash
+# Check certificate expiration date
+openssl x509 -in certificate.pem -noout -dates
+```
+
+Set up reminders to:
+- Generate a new certificate before the current one expires
+- Upload the new certificate to Entra ID
+- Update the `ENTRA_ID_CERTIFICATE_PATH` environment variable
+- Restart your Redmine application
+
 ## Troubleshooting
 
 ### Common Issues
@@ -267,7 +352,21 @@ The plugin adds the following fields to the `users` table:
 **"Invalid client" error:**
 
 - Double-check Client ID and Tenant ID values
-- Ensure Client Secret hasn't expired
+- Ensure Client Secret hasn't expired (if using secret method)
+- Ensure certificate is valid and uploaded to Entra ID (if using certificate method)
+
+**"Failed to generate JWT" error:**
+
+- Verify the certificate file path is correct
+- Ensure the certificate file is readable by the Redmine process
+- If using a password-protected certificate, verify `ENTRA_ID_CERTIFICATE_PASSWORD` is set correctly
+- Ensure certificate is not expired
+
+**"Failed to load certificate" error:**
+
+- Check that the certificate file format is supported (.pem or .pfx)
+- For .pfx files, ensure the password is correct
+- Verify the certificate file is not corrupted
 
 ## Contributing
 

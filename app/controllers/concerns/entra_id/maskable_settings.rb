@@ -11,14 +11,29 @@ module EntraId::MaskableSettings
       return unless params[:id] == "entra_id"
       return unless request.post?
 
-      received_client_secret = params.dig(:settings, :client_secret)
+      # Client secret should be set via environment variable ENTRA_ID_CLIENT_SECRET
+      # Remove from settings to prevent accidental modification via UI
+      params[:settings].delete(:client_secret)
 
-      if received_client_secret == EntraId.masked_client_secret
-        # User didn't change the secret, keep the encrypted value
-        params[:settings][:client_secret] = EntraId.raw_client_secret
-      elsif received_client_secret.present?
-        # User provided a new secret, encrypt it
-        params[:settings][:client_secret] = EntraId.encrypt_client_secret(received_client_secret)
+      # Handle certificate password - don't save empty passwords
+      received_cert_password = params.dig(:settings, :certificate_password)
+      if received_cert_password.blank?
+        # Remove from params if empty to avoid overwriting existing value
+        params[:settings].delete(:certificate_password)
+      elsif received_cert_password.present?
+        # Certificate password should ideally be set via environment variable
+        # But allow UI configuration as fallback
+        params[:settings][:certificate_password] = received_cert_password
+      end
+
+      # Ensure certificate path is not empty if auth method is certificate
+      auth_method = params.dig(:settings, :auth_method)
+      if auth_method == 'certificate'
+        cert_path = params.dig(:settings, :certificate_path)
+        if cert_path.blank? && !ENV["ENTRA_ID_CERTIFICATE_PATH"].present?
+          flash[:error] = l(:error_entra_id_certificate_path_required)
+          params[:settings][:auth_method] = 'secret'  # Revert to default
+        end
       end
     end
 end

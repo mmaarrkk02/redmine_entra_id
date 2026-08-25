@@ -1,6 +1,6 @@
 en:
   text_entra_id_managed_fields: "Name and email are managed by your organization and cannot be changed here."
-  
+
   # Settings form translations
   entra_id_enabled: "Enable Entra ID authentication"
   entra_id_enabled_info: "Allow users to authenticate using Microsoft Entra ID"
@@ -13,9 +13,20 @@ en:
   entra_id_tenant_id: "Tenant ID"
   entra_id_tenant_id_info: "Set via ENTRA_ID_TENANT_ID environment variable"
   entra_id_not_set: "(not set)"
+  entra_id_authentication_method: "Authentication Method"
+  entra_id_auth_method: "Authentication Method"
+  entra_id_auth_method_info: "Choose between client secret or certificate-based authentication"
+  entra_id_auth_method_secret: "Client Secret"
+  entra_id_auth_method_certificate: "Certificate"
+  entra_id_certificate_path: "Certificate Path"
+  entra_id_certificate_path_info: "Set via ENTRA_ID_CERTIFICATE_PATH environment variable (path to .pem or .pfx file)"
+  entra_id_certificate_password: "Certificate Password"
+  entra_id_certificate_password_placeholder: "Password for encrypted certificates"
+  entra_id_certificate_password_info: "Set via ENTRA_ID_CERTIFICATE_PASSWORD environment variable"
   field_entra_id_oid: EntraID OID
   field_entra_id_synced_at: EntraID Sync Time
   label_last_entra_id_sync: "EEA Entra ID synced at"
   button_login_with_entra_id: "Log in with EEA Microsoft Entra ID"
   notice_entra_id_identity_removed: "Entra ID identity has been removed successfully."
   error_entra_id_identity_removal_failed: "Failed to remove Entra ID identity."
+  error_entra_id_certificate_path_required: "Certificate path is required when using certificate authentication."

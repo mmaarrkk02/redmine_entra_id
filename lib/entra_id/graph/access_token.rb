@@ -1,6 +1,9 @@
+require_relative 'jwt_builder'
+
 class EntraId::Graph::AccessToken
   HOST = "login.microsoftonline.com"
   GRANT_TYPE = "client_credentials"
+  GRANT_TYPE_JWT = "urn:ietf:params:oauth:grant-type:jwt-bearer"
   SCOPE = "https://graph.microsoft.com/.default"
 
   EXPIRATION_BUFFER = 30.seconds
@@ -16,11 +19,39 @@ class EntraId::Graph::AccessToken
       "/#{EntraId.tenant_id}/oauth2/v2.0/token"
     end
 
+    def using_certificate?
+      EntraId.auth_method == 'certificate' && EntraId.certificate_path.present?
+    end
+
     def token_params
+      if using_certificate?
+        certificate_token_params
+      else
+        secret_token_params
+      end
+    end
+
+    def secret_token_params
       URI.encode_www_form({
         "grant_type" => GRANT_TYPE,
         "client_id" => EntraId.client_id,
         "client_secret" => EntraId.client_secret,
+        "scope" => SCOPE
+      })
+    end
+
+    def certificate_token_params
+      jwt = EntraId::Graph::JwtBuilder.generate(
+        EntraId.certificate_path,
+        EntraId.client_id,
+        EntraId.tenant_id,
+        EntraId.certificate_password
+      )
+
+      URI.encode_www_form({
+        "grant_type" => GRANT_TYPE_JWT,
+        "client_id" => EntraId.client_id,
+        "assertion" => jwt,
         "scope" => SCOPE
       })
     end
@@ -30,7 +61,7 @@ class EntraId::Graph::AccessToken
         request = Net::HTTP::Post.new(uri.path)
 
         request["Content-Type"] = "application/x-www-form-urlencoded"
-        request.body = EntraId::Graph::AccessToken.token_params
+        request.body = token_params
 
         http.request(request).body
       end

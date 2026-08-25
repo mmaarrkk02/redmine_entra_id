@@ -26,6 +26,10 @@ module EntraId
       settings[:exclusive]
     end
 
+    def auth_method
+      ENV["ENTRA_ID_AUTH_METHOD"] || settings[:auth_method] || 'secret'
+    end
+
     def client_id
       ENV["ENTRA_ID_CLIENT_ID"]
     end
@@ -38,12 +42,28 @@ module EntraId
       client_secret.blank? ? "" : "#{client_secret[0..2]}#{"*" * 18}"
     end
 
+    def certificate_path
+      ENV["ENTRA_ID_CERTIFICATE_PATH"] || settings[:certificate_path]
+    end
+
+    def certificate_password
+      ENV["ENTRA_ID_CERTIFICATE_PASSWORD"] || settings[:certificate_password]
+    end
+
     def tenant_id
       ENV["ENTRA_ID_TENANT_ID"]
     end
 
     def valid?
-      enabled? && client_id.present? && client_secret.present? && tenant_id.present?
+      enabled? && client_id.present? && tenant_id.present? &&
+        case auth_method
+        when 'certificate'
+          certificate_path.present? && File.exist?(certificate_path.to_s)
+        when 'secret'
+          client_secret.present?
+        else
+          false
+        end
     end
 
 

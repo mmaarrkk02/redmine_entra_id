@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0
+
+- Support for certificate-based authentication (JWT/client assertion)
+- Both client secret and certificate authentication methods now supported
+- Configuration UI to select authentication method
+- Support for .pem and .pfx certificate formats
+- Password-protected certificate support
+- Certificate management documentation and examples
+
 ## 1.0.0
 
 - Redmine 6.1 compliance
